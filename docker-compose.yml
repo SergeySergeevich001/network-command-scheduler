@@ -1,0 +1,181 @@
+# docker-compose.yml
+version: "3.8"
+
+services:
+  # Executor Сервис
+  executor:
+    container_name: scheduled_commands_executor
+    build:
+      context: ./executor
+      dockerfile: Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # Переменные для подключения к Redis
+      - REDIS_HOST=scheduled_commands_redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./executor:/app
+    networks:
+      - scheduled_commands_network
+
+  redis:
+    container_name: scheduled_commands_redis
+    image: redis:7-alpine
+    networks:
+      - scheduled_commands_network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgresql:
+    container_name: scheduled_commands_postgresql
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-scheduled_commands}
+    image: postgres:13
+    networks:
+      - scheduled_commands_network
+    ports:
+      - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
+    volumes:
+      # Корректный синтаксис для именованного тома
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-scheduled_commands}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    container_name: scheduled_commands_temporal
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_SEEDS=scheduled_commands_postgresql
+      - POSTGRES_DATABASE=${POSTGRES_DB:-scheduled_commands}
+      - VISIBILITY_DB=postgres12
+      - POSTGRES_VISIBILITY_DATABASE=temporal_visibility
+      - ENABLE_ES=false
+    image: temporalio/auto-setup:latest
+    networks:
+      - scheduled_commands_network
+    ports:
+      - "7233:7233"
+
+  temporal-ui:
+    container_name: scheduled_commands_temporal_ui
+    depends_on:
+      temporal:
+        condition: service_started
+    environment:
+      - TEMPORAL_ADDRESS=scheduled_commands_temporal:7233
+    image: temporalio/ui:latest
+    networks:
+      - scheduled_commands_network
+    ports:
+      - "8080:8080"
+
+  # API Сервис
+  api:
+    container_name: scheduled_commands_api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_HOST=scheduled_commands_postgresql
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-scheduled_commands}
+      # Переменные для подключения к Temporal
+      - TEMPORAL_HOST=scheduled_commands_temporal
+      - TEMPORAL_PORT=7233
+      - TEMPORAL_NAMESPACE=default
+    volumes:
+      - ./api:/app
+    ports:
+      - "8000:8000"
+    networks:
+      - scheduled_commands_network
+
+  # Temporal Worker
+  worker:
+    container_name: scheduled_commands_worker
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    depends_on:
+      temporal:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      # Переменные окружения для подключения к Temporal
+      - TEMPORAL_HOST=scheduled_commands_temporal
+      - TEMPORAL_PORT=7233
+      - TEMPORAL_NAMESPACE=default
+      # Переменные для подключения к Redis
+      - REDIS_HOST=scheduled_commands_redis
+      - REDIS_PORT=6379
+      # Переменные для подключения к API-сервису
+      - API_HOST=scheduled_commands_api
+      - API_PORT=8000
+    volumes:
+      - ./worker:/app
+    networks:
+      - scheduled_commands_network
+
+  # Сервис для запуска тестов
+  api-test:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    volumes:
+      # Монтируем код API и тесты внутрь контейнера
+      - ./api:/app
+      - ./tests:/app/tests
+    environment:
+      # Переменные окружения для подключения к сервисам
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_HOST=scheduled_commands_postgresql
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-scheduled_commands}
+      - REDIS_HOST=scheduled_commands_redis
+      - TEMPORAL_HOST=scheduled_commands_temporal
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    networks:
+      - scheduled_commands_network
+
+# Определение volumes
+volumes:
+  # Корректное определение именованного тома
+  postgres_data:
+    driver: local
+
+networks:
+  scheduled_commands_network:
+    driver: bridge
