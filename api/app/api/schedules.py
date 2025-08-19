@@ -90,6 +90,7 @@ async def create_schedule_for_command(
                 workflow_input,
                 id=workflow_id,
                 task_queue=task_queue_name,
+                cron_schedule=db_schedule.cron_expression, # <-- Вот это место,изза которого не выполнялось
             )
             print(f"Started Temporal Workflow with Run ID: {handle.result_run_id}")
 
