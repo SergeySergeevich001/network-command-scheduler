@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Импорты для Redis и HTTP внутри Activity
 # так как они выполняются отдельно от Workflow
 
-@activity.defn
+@activity.defn  # воркфлоу это план, активности -  шаги плана
 async def fetch_command_details(command_id: str) -> dict:
     # Получение деталей команды по command_id через API.
     logger_activity = logging.getLogger(f"{__name__}.fetch_command_details")

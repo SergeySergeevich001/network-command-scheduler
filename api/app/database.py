@@ -1,4 +1,8 @@
 # api/app/database.py
+'''
+    центр инициализации внешних зависимостей
+
+'''
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -27,6 +31,7 @@ Base = declarative_base()
 
 
 # Зависимость для получения сессии БД в эндпоинтах FastAPI
+#  функция, которая даёт  эндпоинту доступ в БД
 async def get_db():
     async with AsyncSessionLocal() as session:
         try:
@@ -48,7 +53,10 @@ import asyncio
 # Глобальный клиент Temporal
 temporal_client: Client = None
 
+'''
+    у меня их 2, то что здесь запускает воркфлоу то, что  в ворке, отвечает за выполнение 
 
+'''
 async def get_temporal_client() -> Client:
     global temporal_client
     if temporal_client is None:

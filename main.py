@@ -86,8 +86,7 @@ async def update_command_result(
     if result_update.output is not None:
         command_result.output = result_update.output
     command_result.status = result_update.status
-    # executed_at обычно устанавливается при создании, но можно обновить, если нужно.
-    # command_result.executed_at = datetime.utcnow() # Раскомментируйте, если нужно обновлять время
+
 
     db.add(command_result)
     await db.commit()

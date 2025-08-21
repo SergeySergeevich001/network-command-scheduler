@@ -1,4 +1,4 @@
-# api/app/main.py
+# api/app/main.py (основной файл фаст апи,импортирует эндпоинты, добавляет на них префиксы)
 from fastapi import FastAPI
 from app.api import devices, commands, schedules, results
 from app.api.results import router as results_router, device_level_router
@@ -8,16 +8,17 @@ from app.database import engine, Base
 app = FastAPI(title="Scheduled Network Commands API")
 
 # Создание таблиц
-@app.on_event("startup")
+@app.on_event("startup") # встроенный декоратор фастапи,который выполняет функцию один раз при запуске приложения, то есть
+''' до того как сервер начнет принимать хттп запросы '''
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-@app.get("/")
+@app.get("/") # хэлс чек, проверяет что сервер запущен и принимает запросы, видим сообщение об этом в консоли
 async def root():
     return {"message": "Scheduled Network Commands API"}
 
-# Подключение роутеров
+# Подключение роутеров (эндпоинтов датабейс,шедулез, шемаз (расписание), сами эндпоинты в файлах)
 app.include_router(devices.router, prefix="/devices", tags=["devices"])
 # Используем commands_router без дополнительного префикса
 app.include_router(commands_router)

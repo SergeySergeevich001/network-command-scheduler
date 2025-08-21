@@ -1,3 +1,21 @@
+'''
+
+    Worker (организатор):
+        - Получает этот Workflow от Temporal.
+        - Говорит: "Окей, я буду следить за этим делом".
+        - Ждёт 2:00 с помощью встроенного таймера Temporal (не висит в памяти!).
+        - В 2:00: отправляет задачу в очередь tasks (через брокер Redis).
+
+    Executor (исполнитель):
+        - Постоянно слушает очередь tasks.
+        - Получает задачу: "Выполни команду на устройстве 1".
+        - Эмулирует выполнение: ждёт 2 секунды, генерирует вывод.
+        - Отправляет результат в очередь results.
+
+'''
+
+
+
 # worker/main.py
 import asyncio
 import logging
@@ -5,20 +23,19 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 # Импортируем наш Workflow и Activity
-# Обратите внимание на обновленный импорт - добавлена fetch_command_details
 from workflows.schedule_workflow import (
     ScheduleExecutionWorkflow,
     publish_task_to_redis,
     wait_for_result_from_redis,
     save_result_to_api,
-    fetch_command_details  # <-- Добавлен импорт новой Activity
+    fetch_command_details  # <-- Получить данные о команде из БД (через апи)
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO) # включаем систему логирования
 
 
 async def main():
-    # Подключение к Temporal Server
+    # Подключение к Temporal Server это нужно чтобы выполнять Workflow
     # Эти переменные окружения будут переданы из docker-compose.yml
     TEMPORAL_HOST = "scheduled_commands_temporal"  # Имя сервиса Temporal в Docker Compose
     TEMPORAL_PORT = "7233"
@@ -28,7 +45,7 @@ async def main():
 
     logging.info(f"Connecting to Temporal at {TEMPORAL_URL}, namespace: {TEMPORAL_NAMESPACE}")
 
-    try:
+    try: # Пытается подключиться к Temporal Server
         client = await Client.connect(
             target_host=TEMPORAL_URL,
             namespace=TEMPORAL_NAMESPACE,
@@ -44,14 +61,12 @@ async def main():
             client,
             task_queue="scheduled-tasks",  # Должна совпадать с task_queue_name в API
             workflows=[ScheduleExecutionWorkflow],  # Список классов Workflow
-            # Обновлен список Activity добавлена fetch_command_details
             activities=[
                 publish_task_to_redis,
                 wait_for_result_from_redis,
                 save_result_to_api,
-                fetch_command_details  # Добавлена новая Activity
+                fetch_command_details
             ],
-            # Добавьте другие параметры Worker'а при необходимости
         )
         logging.info("Starting Temporal Worker...")
         await worker.run()
