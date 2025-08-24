@@ -1,4 +1,3 @@
-# docker-compose.yml
 version: "3.8"
 
 services:
@@ -12,13 +11,13 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # Переменные для подключения к Redis
       - REDIS_HOST=scheduled_commands_redis
       - REDIS_PORT=6379
     volumes:
       - ./executor:/app
     networks:
       - scheduled_commands_network
+    working_dir: /app # Явно указываем рабочую директорию
 
   redis:
     container_name: scheduled_commands_redis
@@ -45,7 +44,6 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
     volumes:
-      # Корректный синтаксис для именованного тома
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-scheduled_commands}"]
@@ -91,7 +89,7 @@ services:
   api:
     container_name: scheduled_commands_api
     build:
-      context: ./api
+      context: ./fastapi # Контекст сборки - папка fastapi
       dockerfile: Dockerfile
     depends_on:
       postgresql:
@@ -104,16 +102,17 @@ services:
       - POSTGRES_HOST=scheduled_commands_postgresql
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-scheduled_commands}
-      # Переменные для подключения к Temporal
       - TEMPORAL_HOST=scheduled_commands_temporal
       - TEMPORAL_PORT=7233
       - TEMPORAL_NAMESPACE=default
     volumes:
-      - ./api:/app
+      # Исправлено: монтируем папку fastapi, где находится main.py
+      - ./fastapi:/app # Монтируем папку fastapi в /app контейнера
     ports:
       - "8000:8000"
     networks:
       - scheduled_commands_network
+    working_dir: /app # Явно указываем рабочую директорию
 
   # Temporal Worker
   worker:
@@ -127,32 +126,30 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # Переменные окружения для подключения к Temporal
       - TEMPORAL_HOST=scheduled_commands_temporal
       - TEMPORAL_PORT=7233
       - TEMPORAL_NAMESPACE=default
-      # Переменные для подключения к Redis
       - REDIS_HOST=scheduled_commands_redis
       - REDIS_PORT=6379
-      # Переменные для подключения к API-сервису
       - API_HOST=scheduled_commands_api
       - API_PORT=8000
     volumes:
       - ./worker:/app
     networks:
       - scheduled_commands_network
+    working_dir: /app # Явно указываем рабочую директорию
 
   # Сервис для запуска тестов
   api-test:
     build:
-      context: ./api
+      context: ./fastapi # Контекст сборки - папка fastapi (где лежит Dockerfile)
       dockerfile: Dockerfile
     volumes:
-      # Монтируем код API и тесты внутрь контейнера
-      - ./api:/app
-      - ./tests:/app/tests
+      # Исправлено: монтируем папку fastapi, где находится main.py
+      - ./fastapi:/app # Монтируем папку fastapi в /app контейнера
+      # Монтируем папку tests в /app/tests
+      - ./tests:/app/tests # Монтируем папку tests в /app/tests
     environment:
-      # Переменные окружения для подключения к сервисам
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_HOST=scheduled_commands_postgresql
@@ -169,10 +166,10 @@ services:
         condition: service_started
     networks:
       - scheduled_commands_network
+    working_dir: /app # Явно указываем рабочую директорию
 
 # Определение volumes
 volumes:
-  # Корректное определение именованного тома
   postgres_data:
     driver: local
 

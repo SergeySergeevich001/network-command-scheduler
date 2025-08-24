@@ -6,7 +6,7 @@ import pytest
 # Используем синхронный клиент TestClient для тестирования FastAPI приложения
 from starlette.testclient import TestClient
 # Импорт приложения FastAPI
-from main import app
+from app.main import app
 
 
 @pytest.fixture(scope="function")

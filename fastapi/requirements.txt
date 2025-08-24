@@ -1,4 +1,4 @@
-# api/requirements.txt
+# routers/requirements.txt
 
 # Основные зависимости API
 fastapi>=0.115.0,<0.116.0

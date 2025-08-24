@@ -1,4 +1,4 @@
-# api/app/api/commands.py
+# routers/app/routers/commands.py
 from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select

@@ -1,15 +1,15 @@
-# api/app/main.py (основной файл фаст апи,импортирует эндпоинты, добавляет на них префиксы)
+# routers/app/main.py (основной файл фаст апи,импортирует эндпоинты, добавляет на них префиксы)
 from fastapi import FastAPI
-from app.api import devices, commands, schedules, results
-from app.api.results import router as results_router, device_level_router
-from app.api.commands import router as commands_router, command_by_id_router
+from app.routers import devices, commands, schedules, results
+from app.routers.results import router as results_router, device_level_router
+from app.routers.commands import router as commands_router, command_by_id_router
 from app.database import engine, Base
 
 app = FastAPI(title="Scheduled Network Commands API")
 
 # Создание таблиц
 @app.on_event("startup") # встроенный декоратор фастапи,который выполняет функцию один раз при запуске приложения, то есть
-''' до того как сервер начнет принимать хттп запросы '''
+#до того как сервер начнет принимать хттп запросы
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

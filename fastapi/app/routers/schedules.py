@@ -1,9 +1,10 @@
-# api/app/api/schedules.py
+# routers/app/routers/schedules.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app import models, schemas
-from app.database import get_db, get_temporal_client
+from app.database import get_db
+from app.temporal_client import get_temporal_client
 import uuid
 from temporalio.client import Client
 

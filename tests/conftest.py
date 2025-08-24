@@ -3,11 +3,7 @@ import pytest
 import random
 import uuid
 import asyncio
-# Импортируем напрямую из main.py
-# main.py находится в /app внутри контейнера
-from main import app as application  # Импортируем экземпляр FastAPI app из main.py
-
-# Импорты из вашего проекта
+from app.main import app as application
 from app.database import Base, DATABASE_URL, get_db
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker

@@ -1,11 +1,5 @@
-# api/app/schemas.py
-'''
+# routers/app/schemas.py
 
-    центральный элемент валидации и типизации данных в FastAPI
-    схема потока: HTTP → Schema → Service → Model → DB
-
-
-'''
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Union
 from datetime import datetime

@@ -1,4 +1,4 @@
-# api/app/models.py модели алхимии, описывают таблицы в постгрес бд
+# routers/app/models.py модели алхимии, описывают таблицы в постгрес бд
 '''используется всегда, когда идёт работа с данными, при добавлении поля нужно пересоздавать БД, так как миграции не
 предусмотрены и нет алембик'''
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, UniqueConstraint
